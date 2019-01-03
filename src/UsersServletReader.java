@@ -5,6 +5,7 @@ import java.io.InputStream;
 
 public class UsersServletReader {
 	public Users getUsers() {
+		main();
 		return users;
 	}
 
@@ -14,7 +15,7 @@ public class UsersServletReader {
 
 	private static Users users;
 
-	public static void main(String[] args) {
+	public static void main() {
 		try (InputStream xml = UsersServletReader.class
 				.getResourceAsStream("users.xml");) {
 			JAXBContext jaxbContext = JAXBContext.newInstance(Users.class);

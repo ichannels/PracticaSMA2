@@ -1,0 +1,12 @@
+<component name="libraryTable">
+  <library name="jdk-11.0">
+    <CLASSES>
+      <root url="file://C:/Program Files/Java/jdk-11.0.1" />
+      <root url="jar://C:/Program Files/Java/jdk-11.0.1/lib/jrt-fs.jar!/" />
+      <root url="jar://C:/Program Files/Java/jdk-11.0.1/lib/jrt-fs.jar!/jdk" />
+      <root url="jar://$USER_HOME$/Downloads/jaxb-api-2.3.0.jar!/" />
+    </CLASSES>
+    <JAVADOC />
+    <SOURCES />
+  </library>
+</component>

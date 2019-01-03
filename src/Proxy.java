@@ -756,6 +756,7 @@ public class Proxy {
                     }
                 }else {
                     //No existe en el users.xml
+                    System.out.println("\nNo existe ese usuario en el users.xml\n");
                 }
             }
         }
