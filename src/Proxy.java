@@ -19,7 +19,7 @@ public class Proxy {
     public static void main(String[] args) {
         DatagramSocket s = null;
         //Atributos de UA
-        if (args[0]==null || args[1]==null || args[2]==null)
+        if (args.length==0)
         {
             puertoEscuchaProxy = "5060";
             looseRouting=true;
