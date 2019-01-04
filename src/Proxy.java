@@ -63,6 +63,7 @@ public class Proxy {
         ArrayList<ArrayList> lista = new ArrayList<>();
         ArrayList<String> usuario1 = new ArrayList<>();
         ArrayList<String> usuario2 = new ArrayList<>();
+        ArrayList<String> usuario3 = new ArrayList<>();
         String numero_secuencia = null;
 
         //Constructor del hilo con el objeto de tipo socket
@@ -73,6 +74,7 @@ public class Proxy {
         public void run() {
             lista.add(usuario1);
             lista.add(usuario2);
+            lista.add(usuario3);
             usuario1.add("javier");
             usuario1.add("pass");
             usuario1.add("");
@@ -81,6 +83,10 @@ public class Proxy {
             usuario2.add("pass");
             usuario2.add("");
             usuario2.add("");
+            usuario3.add("boss");
+            usuario3.add("pass");
+            usuario3.add("");
+            usuario3.add("");
             try {
                 while (true) {
                     //Creo un objeto de tipo paquete
@@ -124,7 +130,7 @@ public class Proxy {
                     String uri = parts[1];
                     parts = uri.split("@");
 
-                    if (lista.get(0).get(0).equals(parts[0]) || lista.get(1).get(0).equals(parts[0])) {
+                    if (lista.get(0).get(0).equals(parts[0]) || lista.get(1).get(0).equals(parts[0]) || lista.get(2).get(0).equals(parts[0])) {
                         OKMessage okMessage = new OKMessage();
                         okMessage.setVias(((RegisterMessage) m).getVias());
                         okMessage.setToName(((RegisterMessage) m).getToName());
@@ -696,7 +702,7 @@ public class Proxy {
                 uhe.printStackTrace(System.out);
             }
             String ports=((InviteMessage) m).getVias().get(0).split(":")[1];
-            DatagramPacket p1 = new DatagramPacket(serviceUnavailableMessage.toStringMessage().getBytes(), m.toStringMessage().getBytes().length, address, Integer.parseInt(ports));
+            DatagramPacket p1 = new DatagramPacket(serviceUnavailableMessage.toStringMessage().getBytes(), serviceUnavailableMessage.toStringMessage().getBytes().length, address, Integer.parseInt(ports));
 
             try {
                 s.send(p1);
@@ -727,11 +733,11 @@ public class Proxy {
                 servlets.add(users.getListUsers().get(i).getServletClass());
             }
             for(int j=0;j<usuarios.size();j++){
-                if(usuarios.get(j).equals((m.getFromUri().split(":")[1]))){
+                if(usuarios.get(j).equals(m.getFromUri())){
 
                     try {
                         Class<?> clase = Class.forName(servlets.get(j).getName());
-                        IgnacioSipServlet servlet = (IgnacioSipServlet) clase.newInstance();
+                        SIPServletInterface servlet = (SIPServletInterface) clase.newInstance();
                         SipServletRequestInterface request = new SipServletRequest(m.getFromUri(),m.getToUri());
                         servlet.doInvite(request);
                     } catch (InstantiationException e) {
@@ -741,10 +747,10 @@ public class Proxy {
                     } catch (ClassNotFoundException e) {
                         e.printStackTrace();
                     }
-                }else if (usuarios.get(j).equals((m.getToUri().split(":")[1]))){
+                }else if (usuarios.get(j).equals(m.getToUri())){
                     try {
                         Class<?> clase = Class.forName(servlets.get(j).getName());
-                        IgnacioSipServlet servlet = (IgnacioSipServlet) clase.newInstance();
+                        SIPServletInterface servlet = (SIPServletInterface) clase.newInstance();
                         SipServletRequestInterface request = new SipServletRequest(m.getFromUri(),m.getToUri());
                         servlet.doInvite(request);
                     } catch (InstantiationException e) {

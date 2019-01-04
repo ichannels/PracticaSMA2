@@ -1,6 +1,6 @@
 import java.util.Calendar;
 
-public class IgnacioSipServlet implements SIPServletInterface {
+public class JaviSipServlet implements SIPServletInterface {
 
     //Tareas del servlet:
     //-Responder con TRYING (hacia UA1) al primer INVITE
@@ -14,8 +14,8 @@ public class IgnacioSipServlet implements SIPServletInterface {
         Calendar cal = Calendar.getInstance();
         int hour = cal.get(Calendar.HOUR_OF_DAY);
 
-        if(request.getCallerURI().equals("sip:boss@midominio.com") &&
-             hour>=11 && hour<17) {
+        if(//request.getCallerURI().split(":")[1].equals("boss") &&
+                hour>=9 && hour<17) {
             response = (SipServletResponse) request.createResponse(100);
             response.send();
         }

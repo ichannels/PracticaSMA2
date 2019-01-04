@@ -21,14 +21,12 @@ public class SipServletResponse implements SipServletResponseInterface {
 
     @Override
     public void send() {
-        switch (codigoMensaje){
-            case 100:{
+            if(codigoMensaje==100){
                 Proxy.code=100;
             }
-            case 503:{
+            else if(codigoMensaje==503){
                 Proxy.code=503;
             }
-        }
     }
 
 }

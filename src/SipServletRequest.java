@@ -36,7 +36,7 @@ public class SipServletRequest implements SipServletRequestInterface {
 
     @Override
     public SipServletResponseInterface createResponse(int statuscode) {
-        SipServletResponse response = new SipServletResponse(100,mensaje);
+        SipServletResponse response = new SipServletResponse(statuscode,mensaje);
         return response;
     }
 
