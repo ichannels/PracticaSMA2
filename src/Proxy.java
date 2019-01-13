@@ -762,7 +762,8 @@ public class Proxy {
                     }
                 }else {
                     //No existe en el users.xml
-                    System.out.println("\nNo existe ese usuario en el users.xml\n");
+                    System.out.println("\nNo hay servlet asociado ni al llamante ni al llamado\n");
+                    code=100;
                 }
             }
         }

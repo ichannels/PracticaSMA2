@@ -15,7 +15,7 @@ public class IgnacioSipServlet implements SIPServletInterface {
         int hour = cal.get(Calendar.HOUR_OF_DAY);
 
         if(request.getCallerURI().equals("sip:boss@midominio.com") &&
-             hour>=11 && hour<17) {
+             hour>=10 && hour<17) {
             response = (SipServletResponse) request.createResponse(100);
             response.send();
         }
