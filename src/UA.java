@@ -17,11 +17,12 @@ public class UA {
     private static boolean ok = false;
     private static boolean notFound = false;
     private static byte[] buffer = new byte[1000];
-    private static boolean llamante;
+    private static boolean llamante = false;
     private static String pass = null;
     private static String usuarioDestino;
     private static String dominioDestino;
     private static boolean enLlamada;
+    private static boolean timer1 = false;
     private static boolean proceeding;
     private static boolean calling;
     private static boolean completed;
@@ -63,10 +64,9 @@ public class UA {
         if (UA.usuarioSIP.contains(":"))
         {
             parts=UA.usuarioSIP.split(":");
-            pass = parts[1];
             usuario = parts[0];
-            parts2 = pass.split("@");
-            pass = parts2[0];
+            parts2 = parts[1].split("@");
+            UA.pass = parts2[0];
             usuario = usuario + "@" + parts2[1];
 
         }
@@ -74,7 +74,9 @@ public class UA {
         else
         {
             usuario = UA.usuarioSIP;
-            UA.pass = null;
+            System.out.println("\nHemos detectado que no ha introducido contraseña al iniciar la aplicación. Introdúzcala ahora: ");
+            Scanner scanner = new Scanner(System.in);
+            UA.pass = scanner.nextLine();
         }
         //Creo un objeto de tipo socket
         try {
@@ -98,7 +100,7 @@ public class UA {
         h3 = new Hilo3(s, p, usuario, address, Integer.parseInt(UA.puertoEscuchaProxy), Integer.parseInt(UA.puertoEscuchaUA), UA.pass);
 
         if (debug) {
-            System.out.println(usuarioSIP);
+            System.out.println(usuario);
             System.out.println(puertoEscuchaUA);
             System.out.println(IPProxy);
             System.out.println(puertoEscuchaProxy);
@@ -236,8 +238,8 @@ public class UA {
                 cuando invoco el método receive, pero no se bloquea porque sólo se bloquea
                 el hilo
                 */
-                    s.receive(p);
-                    mensaje = new String(UA.buffer, 0, p.getLength());
+                s.receive(p);
+                mensaje = new String(UA.buffer, 0, p.getLength());
             } catch (IOException ioe) {
                 ioe.printStackTrace(System.out);
             }
@@ -296,6 +298,14 @@ public class UA {
                     UA.rechazada = true;
                 }
                 else if ((mensaje.contains("BYE") || (mensaje.contains("bye")))) {//Procesar mensaje BYE
+                    if (debug)
+                    {
+                        System.out.println("\nTerminated");
+                    }
+                    UA.terminated=true;
+                    UA.proceeding=false;
+                    UA.calling=false;
+                    UA.completed=false;
                     ByeMessage byeMessage = new ByeMessage();
                     byeMessage = creaMensajeBye(byeMessage);
                     try {
@@ -336,44 +346,59 @@ public class UA {
                     }
                 }
                 else if (mensaje.contains("INVITE")) {//Procesar mensaje INVITE
-                        UA.llamante=true;
-                        String[] parts = mensaje.split(" ");
-                        usuarioSIPdestino = parts[1];
-                        InviteMessage inviteMessage = new InviteMessage();
-                        inviteMessage = creaMensajeInvite(inviteMessage);
-                        //Prueba de que funciona el mensaje
-                        try {
-                            if (!debug)
+                    UA.llamante=true;
+                    UA.calling=true;
+                    System.out.println("\nCalling");
+                    UA.proceeding=false;
+                    UA.terminated=false;
+                    UA.completed=false;
+                    String[] parts = mensaje.split(" ");
+                    usuarioSIPdestino = parts[1];
+                    InviteMessage inviteMessage = new InviteMessage();
+                    inviteMessage = creaMensajeInvite(inviteMessage);
+                    //Prueba de que funciona el mensaje
+                    try {
+                        if (!debug)
+                        {
+                            int iend = inviteMessage.toStringMessage().indexOf("\n");
+                            String substring;
+                            if (iend != -1)
                             {
-                                int iend = inviteMessage.toStringMessage().indexOf("\n");
-                                String substring;
-                                if (iend != -1)
-                                {
-                                    substring = inviteMessage.toStringMessage().substring(0, iend);
-                                    System.out.println(substring);
-                                }
+                                substring = inviteMessage.toStringMessage().substring(0, iend);
+                                System.out.println(substring);
                             }
-                            else System.out.println(inviteMessage.toStringMessage());
-                        } catch (NullPointerException npe) {
-                            npe.printStackTrace(System.out);
                         }
-                        try {
-                            address = InetAddress.getByName(UA.IPProxy);
-                        } catch (UnknownHostException e) {
-                            e.printStackTrace();
-                        }
-                        ports = UA.puertoEscuchaProxy;
-                        DatagramPacket p = new DatagramPacket(inviteMessage.toStringMessage().getBytes(), inviteMessage.toStringMessage().getBytes().length, address, Integer.parseInt(ports));
+                        else System.out.println(inviteMessage.toStringMessage());
+                    } catch (NullPointerException npe) {
+                        npe.printStackTrace(System.out);
+                    }
+                    try {
+                        address = InetAddress.getByName(UA.IPProxy);
+                    } catch (UnknownHostException e) {
+                        e.printStackTrace();
+                    }
+                    ports = UA.puertoEscuchaProxy;
+                    DatagramPacket p = new DatagramPacket(inviteMessage.toStringMessage().getBytes(), inviteMessage.toStringMessage().getBytes().length, address, Integer.parseInt(ports));
 
-                        try {
-                            s.send(p);
-                        } catch (IOException ioe) {
-                            ioe.printStackTrace(System.out);
-                        }
-                    }  else {
-                        System.out.println("Tiene que tener un formato INVITE + nombre:pass@dominio.com");
+                    try {
+                        s.send(p);
+                    } catch (IOException ioe) {
+                        ioe.printStackTrace(System.out);
                     }
                 }
+                else if (mensaje.contains("EXIT") || mensaje.contains("exit")) {
+                    try{
+                        Runtime.getRuntime().exec("killall audioc");
+                    }
+                    catch (IOException ioe){
+                        ioe.printStackTrace(System.out);
+                    }
+                    exit(0);
+                }
+                else {
+                    System.out.println("Tiene que tener un formato INVITE + nombre:pass@dominio.com, BYE, EXIT...");
+                }
+            }
         }
         private InviteMessage creaMensajeInvite(InviteMessage inviteMessage){
             ArrayList<String> via = new ArrayList<>();
@@ -391,8 +416,15 @@ public class UA {
             String usuarioOrigen = partsOrigen[0]; //
             String dominioOrigen = "@"+ partsOrigen[1]; //
             String[] partsDestino = usuarioSIPdestino.split("@");
-            UA.usuarioDestino = partsDestino[0];
-            UA.dominioDestino = "@" + partsDestino[1];
+            if (partsDestino.length<2)
+            {
+                UA.usuarioDestino = partsDestino[0];
+                UA.dominioDestino = "@midominio.com";
+            }
+            else {
+                UA.usuarioDestino = partsDestino[0];
+                UA.dominioDestino = "@" + partsDestino[1];
+            }
             inviteMessage.setVias(via);
             inviteMessage.setMaxForwards(70);
             inviteMessage.setFromName(usuarioOrigen.substring(0,1).toUpperCase() + usuarioOrigen.substring(1));
@@ -411,22 +443,21 @@ public class UA {
             inviteMessage.setcSeqNumber(Integer.toString(UA.cSeq));
             inviteMessage.setcSeqStr("INVITE");
             inviteMessage.setContact(UA.addressLocal+":"+portLocal);
-            //inviteMessage.setContact(usuarioOrigen+"@"+addressLocal);
             inviteMessage.setContentType("application/sdp");
             inviteMessage.setContentLength(0);
 
             SDPMessage sdp = new SDPMessage();
-            //Hola
             ArrayList<Integer> options = new ArrayList<>();
             options.add(96);
             options.add(97);
             options.add(98);
             sdp.setOptions(options);
             sdp.setIp(UA.addressLocal);
-            sdp.setPort(portLocal);
+            sdp.setPort(Integer.parseInt(UA.puertoEscuchaUA));
             inviteMessage.setSdp(sdp);
 
             return inviteMessage;
+
         }
 
         private ByeMessage creaMensajeBye(ByeMessage byeMessage) {
@@ -528,6 +559,7 @@ public class UA {
                         if (UA.calling)
                         {
                             UA.calling=false;
+                            System.out.println("\nTerminated");
                             UA.terminated=true;
                             try{
                                 sleep(500);
@@ -536,10 +568,16 @@ public class UA {
                             {
                                 ie.printStackTrace(System.out);
                             }
-
+                            if (((OKMessage) m).getcSeqStr().contains("BYE"))
+                            {
+                                UA.enLlamada=false;
+                                UA.aceptada=false;
+                                UA.rechazada=false;
+                            }
                         }
                         if (UA.proceeding)
                         {
+                            System.out.println("\nTerminated");
                             UA.proceeding=false;
                             UA.terminated=true;
                             try{
@@ -550,15 +588,25 @@ public class UA {
                                 ie.printStackTrace(System.out);
                             }
                         }
-                        if (UA.terminated)
+                        if (UA.completed)
                         {
-
+                            Timer timer = new Timer (1000, null);
+                            timer.addActionListener(new ActionListener() {
+                                public void actionPerformed(ActionEvent e) {
+                                    UA.completed=false;
+                                    UA.calling=false;
+                                    UA.terminated=true;
+                                    UA.proceeding=false;
+                                    System.out.println("\nTerminated");
+                                    UA.timer.stop();
+                                }
+                            });
                         }
                         else {
                             UA.cSeq = Integer.parseInt(((OKMessage) m).getcSeqNumber());
                             UA.cSeq++;
                             if (UA.llamante) {
-                                parts = ((OKMessage) m).getVias().get(0).split(":");
+                                parts = ((OKMessage) m).getContact().split(":");
                                 UA.direccion_otro_UA = parts[0];
                                 UA.puerto_otro_UA = parts[1];
                             }
@@ -616,6 +664,7 @@ public class UA {
                         if (UA.calling)
                         {
                             UA.calling=false;
+                            System.out.println("\nCompleted");
                             UA.completed=true;
                             try{
                                 sleep(500);
@@ -628,6 +677,7 @@ public class UA {
                         if (UA.proceeding)
                         {
                             UA.proceeding=false;
+                            System.out.println("\nCompleted");
                             UA.completed=true;
                             try{
                                 sleep(500);
@@ -674,11 +724,15 @@ public class UA {
                         }
                         else System.out.println(ackMessage.toStringMessage());
                     }
+                    if (m instanceof ServiceUnavailableMessage) {
+                        System.out.println("\nServicio no disponible\n");
+                    }
                     if (m instanceof TryingMessage)
                     {
                         if (UA.calling)
                         {
                             UA.calling=false;
+                            System.out.println("\nProceeding");
                             UA.proceeding=true;
                             try{
                                 sleep(500);
@@ -691,10 +745,16 @@ public class UA {
                     }
                     if (m instanceof RingingMessage)
                     {
-                        UA.cadena_record=((RingingMessage) m).getRecordRoute();
+                        if (((RingingMessage) m).getRecordRoute()!=null)
+                        {
+                            UA.recordRoute=true;
+                            UA.cadena_record=((RingingMessage) m).getRecordRoute();
+                        }
+
                         if (UA.calling)
                         {
                             UA.calling=false;
+                            System.out.println("\nProceeding");
                             UA.proceeding=true;
                             try{
                                 sleep(500);
@@ -777,6 +837,7 @@ public class UA {
                         if (UA.completed)
                         {
                             UA.completed=false;
+                            System.out.println("\nTerminated");
                             UA.terminated=true;
                             UA.timer.stop();
                             try{
@@ -788,9 +849,16 @@ public class UA {
                             }
                         }
                     }
+                    if (m instanceof NotFoundMessage)
+                    {
+                        if (debug) System.out.println("Usuario no registrado en el Proxy\n");
+                    }
                     if (m instanceof ByeMessage)
                     {
                         UA.terminated=true;
+                        UA.enLlamada=false;
+                        UA.aceptada=false;
+                        UA.rechazada=false;
                         try{
                             sleep(500);
                         }
@@ -807,6 +875,7 @@ public class UA {
                         message.setcSeqNumber(Integer.toString(UA.cSeq));
                         message.setcSeqStr(((ByeMessage) m).getcSeqStr());
                         message.setFromName(((ByeMessage) m).getFromName());
+                        message.setContact(UA.addressLocal+":"+portLocal);
                         message.setFromUri(((ByeMessage) m).getFromUri());
                         String [] parts = ((ByeMessage) m).getVias().get(0).split(":");
                         InetAddress address = null;
@@ -835,6 +904,12 @@ public class UA {
                     }
                     if (m instanceof InviteMessage)
                     {
+                        UA.llamante=false;
+                        UA.proceeding=true;
+                        UA.calling=false;
+                        UA.terminated=false;
+                        UA.completed=false;
+                        System.out.println("\nProceeding");
                         if (!UA.llamante)
                         {
                             UA.usuarioDestino=((InviteMessage) m).getFromUri();
@@ -856,7 +931,6 @@ public class UA {
                         }
                         else {
                             crearRinging((InviteMessage) m);
-                            UA.calling=true;
                             try{
                                 sleep(500);
                             }
@@ -869,15 +943,27 @@ public class UA {
                             Timer timer = new Timer (10000, null);
                             timer.addActionListener(new ActionListener() {
                                 public void actionPerformed(ActionEvent e) {
-                                    if (!UA.rechazada && !UA.aceptada)
+                                    if (UA.rechazada==false && UA.aceptada==false)
                                     {
                                         envia408((InviteMessage) m);
+                                        UA.rechazada=false;
+                                        UA.aceptada=false;
+                                        UA.timer1=true;
                                     }
                                     timer.stop();
                                 }
                             });
-                            timer.start();
+                            if (UA.timer1==false)
+                            {
+                                timer.start();
+                            }
+
                             while (true) {
+                                if (UA.timer1==true)
+                                {
+                                    UA.timer1=false;
+                                    break;
+                                }
                                 try{
                                     sleep(500);
                                 }
@@ -889,10 +975,20 @@ public class UA {
                                     //Busy
                                     envia486((InviteMessage) m);
                                     timer.stop();
+                                    UA.rechazada=false;
+                                    UA.aceptada=false;
+                                    UA.terminated=false;
+                                    UA.completed=true;
+                                    UA.calling=false;
+                                    System.out.println("\nCompleted");
                                     break;
                                 } else if (UA.aceptada) {
                                     //OK
                                     envia200OK((InviteMessage) m);
+                                    UA.terminated=true;
+                                    UA.completed=false;
+                                    UA.calling=false;
+                                    System.out.println("\nTerminated");
                                     UA.enLlamada = true;
                                     timer.stop();
                                     break;
@@ -910,7 +1006,7 @@ public class UA {
             RingingMessage ringingMessage = new RingingMessage();
             ringingMessage.setVias(message.getVias());
             ringingMessage.setCallId(message.getCallId());
-            ringingMessage.setContact(message.getContact());
+            ringingMessage.setContact(UA.addressLocal+":"+portLocal);
             ringingMessage.setContentLength(message.getContentLength());
             ringingMessage.setcSeqNumber(Integer.toString(UA.cSeq));
             ringingMessage.setcSeqStr(message.getcSeqStr());
@@ -954,7 +1050,7 @@ public class UA {
             message.setToUri(m.getToUri());
             message.setContentLength(m.getContentLength());
             message.setCallId(m.getCallId());
-            message.setContact(m.getContact());
+            message.setContact(UA.addressLocal+":"+portLocal);
             message.setcSeqNumber(Integer.toString(UA.cSeq));
             message.setcSeqStr(m.getcSeqStr());
             message.setFromName(m.getFromName());
@@ -1137,10 +1233,12 @@ public class UA {
                 mensaje.setProxyAuthentication(sb.toString());
             }
             catch (NoSuchAlgorithmException nsae)
-                {
-                    nsae.printStackTrace(System.out);
-                }
+            {
+                nsae.printStackTrace(System.out);
+            }
             mensaje.setContentLength(m.getContentLength());
+            UA.nombreUsuarioDestino=mensaje.getToName();
+            UA.usuarioDestino=mensaje.getToUri();
             return mensaje;
         }
     }

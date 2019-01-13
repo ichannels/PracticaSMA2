@@ -29,7 +29,7 @@ public class Proxy {
         {
             puertoEscuchaProxy = args[0];
             looseRouting = Boolean.valueOf(args[1]);
-            Boolean debug = Boolean.valueOf(args[2]);
+            debug = Boolean.valueOf(args[2]);
         }
         Hilo1 h1;
         try {
@@ -74,9 +74,9 @@ public class Proxy {
         public void run() {
             lista.add(usuario1);
             lista.add(usuario2);
-            lista.add(usuario3);
             usuario1.add("javier");
             usuario1.add("pass");
+            lista.add(usuario3);
             usuario1.add("");
             usuario1.add("");
             usuario2.add("ignacio");
@@ -106,6 +106,7 @@ public class Proxy {
             String ports = null;
             int indice = 0;
             int i = 0;
+            boolean encontrado = false;
 
             try {
                 //Cojo el mensaje
@@ -130,7 +131,7 @@ public class Proxy {
                     String uri = parts[1];
                     parts = uri.split("@");
 
-                    if (lista.get(0).get(0).equals(parts[0]) || lista.get(1).get(0).equals(parts[0]) || lista.get(2).get(0).equals(parts[0])) {
+                    if (lista.get(0).get(0).equals(parts[0]) || lista.get(1).get(0).equals(parts[0])|| lista.get(2).get(0).equals(parts[0])) {
                         OKMessage okMessage = new OKMessage();
                         okMessage.setVias(((RegisterMessage) m).getVias());
                         okMessage.setToName(((RegisterMessage) m).getToName());
@@ -446,7 +447,7 @@ public class Proxy {
 
                     DatagramPacket p1 = new DatagramPacket(byeMessage.toStringMessage().getBytes(), byeMessage.toStringMessage().getBytes().length, address, Integer.parseInt(ports));
                     try {
-                       s.send(p1);
+                        s.send(p1);
                     } catch (IOException ioe) {
                         ioe.printStackTrace(System.out);
                     }
@@ -467,7 +468,6 @@ public class Proxy {
                     if (Proxy.procesando)
                     {
                         envia503(m);
-
                     }
                     else {
                         Proxy.cSeq = Integer.parseInt(((InviteMessage) m).getcSeqNumber());
@@ -488,6 +488,7 @@ public class Proxy {
                         i = 0;
                         while (i < lista.size()) {
                             if (lista.get(i).get(0).equals(((InviteMessage) m).getToName().toLowerCase())) {
+                                encontrado=true;
                                 if (lista.get(i).get(2).equals("")) {
                                     //Esto significa que el usuario todavía no está registrado. Tengo que mandar un notFound
                                     NotFoundMessage notFoundMessage = new NotFoundMessage();
@@ -525,6 +526,41 @@ public class Proxy {
                                 }
                             }
                             i++;
+                        }
+                        if (encontrado==false)
+                        {
+                            NotFoundMessage notFoundMessage = new NotFoundMessage();
+                            notFoundMessage.setVias(((InviteMessage) m).getVias());
+                            notFoundMessage.setToName(((InviteMessage) m).getToName());
+                            notFoundMessage.setToUri(((InviteMessage) m).getToUri());
+                            notFoundMessage.setFromName(((InviteMessage) m).getFromName());
+                            notFoundMessage.setFromUri(((InviteMessage) m).getFromUri());
+                            notFoundMessage.setCallId(((InviteMessage) m).getCallId());
+                            notFoundMessage.setcSeqNumber(Integer.toString(Proxy.cSeq));
+                            notFoundMessage.setcSeqStr(((InviteMessage) m).getcSeqStr());
+                            notFoundMessage.setContact(((InviteMessage) m).getContact());
+                            notFoundMessage.setExpires(Integer.toString(7200));
+                            notFoundMessage.setContentLength(0);
+
+                            DatagramPacket p = new DatagramPacket(notFoundMessage.toStringMessage().getBytes(), notFoundMessage.toStringMessage().getBytes().length, address, Integer.parseInt(ports));
+
+                            try {
+                                s.send(p);
+                            } catch (IOException ioe) {
+                                ioe.printStackTrace(System.out);
+                            }
+                            if (!debug)
+                            {
+                                int iend = notFoundMessage.toStringMessage().indexOf("\n");
+                                String substring;
+                                if (iend != -1)
+                                {
+                                    substring = notFoundMessage.toStringMessage().substring(0, iend);
+                                    System.out.println(substring);
+                                }
+                            }
+                            else System.out.println(notFoundMessage.toStringMessage());
+                            return;
                         }
 
                         if (((InviteMessage) m).getProxyAuthentication() == null) {
@@ -610,14 +646,17 @@ public class Proxy {
                                         } catch (IOException ioe) {
                                             ioe.printStackTrace(System.out);
                                         }
-                                        if (!debug) {
+                                        if (!debug)
+                                        {
                                             int iend = tryingMessage.toStringMessage().indexOf("\n");
                                             String substring;
-                                            if (iend != -1) {
+                                            if (iend != -1)
+                                            {
                                                 substring = tryingMessage.toStringMessage().substring(0, iend);
                                                 System.out.println(substring);
                                             }
-                                        } else System.out.println(tryingMessage.toStringMessage());
+                                        }
+                                        else System.out.println(tryingMessage.toStringMessage());
                                         ArrayList<String> via;
                                         via = ((InviteMessage) m).getVias();
                                         via.add(0, addressLocal.toString().substring(1) + ":" + puertoEscuchaProxy);
@@ -659,15 +698,18 @@ public class Proxy {
                                         } catch (IOException ioe) {
                                             ioe.printStackTrace(System.out);
                                         }
-                                        if (!debug) {
+                                        if (!debug)
+                                        {
                                             int iend = m.toStringMessage().indexOf("\n");
                                             String substring;
-                                            if (iend != -1) {
+                                            if (iend != -1)
+                                            {
                                                 substring = m.toStringMessage().substring(0, iend);
                                                 System.out.println(substring);
                                             }
-                                        } else System.out.println(m.toStringMessage());
-                                    }else if(code==503){
+                                        }
+                                        else System.out.println(m.toStringMessage());
+                                    } else if(code==503){
                                         envia503(m);
                                     }
                                 }
@@ -682,7 +724,6 @@ public class Proxy {
                 sipe.printStackTrace(System.out);
             }
         }
-
         private void envia503(SIPMessage m) {
             Proxy.cSeq = Integer.parseInt(((InviteMessage) m).getcSeqNumber());
             Proxy.cSeq++;
